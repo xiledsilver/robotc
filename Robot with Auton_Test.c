@@ -18,7 +18,7 @@
 //NON fly wheel port 3
 //conveyor port 4
 //NON Driving wheel port 5
-//ECU Driving wheel port 6
+//ECU Driving wheel port 6   <-- may be port 9. change config to relfect this if true.
 //ECU Wiper port 7
 //NON Wiper port 8
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -43,18 +43,18 @@ void pre_auton()
 // You must modify the code to add your own robot specific commands here.
 //
 /////////////////////////////////////////////////////////////////////////////////////////
-
+																  //
 // If there are issues with the program, comment this, as well as the motor off in the UsrCtrl, out.
-
-bool blueAlliance = false;
-bool redAlliance = false;      //Select Alliance.
-int sp = 0;
-int timingToCenter = 0;  // in ms. IMPORTANT!
-									// FIND OUT TIMING TO CENTER
-									// ON FOAM TILES. MAY DIFF.
+                                //
+bool blueAlliance = false;     //
+bool redAlliance = false;     //Select Alliance.
+int sp = 0;									 //
+int timingToCenter = 0;  		// in ms. IMPORTANT!
+													 // FIND OUT TIMING TO CENTER
+													// ON FOAM TILES. MAY DIFF.
 int autonTurnTime = 100; // Turn time to face the net. NEED TO DETERMINE CORRECT VAL. /100 for S value.
-task autonomous(){
-  if (blueAlliance){
+task autonomous(){			//
+  if (blueAlliance){	 //
   	for (; sp < timingToCenter; sp++){
   		motor[eDrivingPort] = -127;
   		motor[nDrivingPort] = -127;
@@ -62,8 +62,8 @@ task autonomous(){
   		if (sp == timingToCenter-1){
   			// Do turn to face net. Differs between each alliance.
   			motor[eDrivingPort] = -127;
-  			motor[nDrivingPort] = 127;
-  			wait10Msec(autonTurnTime); //timing may vary
+  			motor[nDrivingPort] = 127; // May need to be switched.
+  			wait10Msec(autonTurnTime);
   			break;
   		}
   	}
@@ -75,9 +75,9 @@ task autonomous(){
   		wait1Msec(1);
   		if (sp == timingToCenter-1){
   			// Do turn to face net. Differs between each alliance.
-  			motor[eDrivingPort] = -127;
-  			motor[nDrivingPort] = 127;
-  			wait10Msec(autonTurnTime); //timing may vary
+  			motor[eDrivingPort] = 127;
+  			motor[nDrivingPort] = -127;  // May need to be switched.
+  			wait10Msec(autonTurnTime);
   			break;
   		}
   	}
@@ -102,7 +102,11 @@ task autonomous(){
 //
 /////////////////////////////////////////////////////////////////////////////////////////
 bool toggle = false;
-int conveyWheels = 0;
+int rightCtrl = 0;
+int leftCtrl = 0;
+short conveyorCtrl;
+short offConveyorCtrl;
+short flywheelCtrl;
 task usercontrol()
 {
 	motor[eDrivingPort] = 0; // TURN ALL OFF. In case of auton mess up.
@@ -112,56 +116,32 @@ task usercontrol()
 	motor[nFlyWheelPort] = 0;
 	motor[eFlyWheelPort] = 0;
 	while (true)
-	{
-		//Resets the fly wheels to not moving when the button 5D is not pressed
-		motor[eFlyWheelPort] = 0;
-		motor[nFlyWheelPort] = 0;
+	{                            // Get Vals from Remote
+		rightCtrl = vexRT[Ch2];   // ints, tank driving ctrl
+		leftCtrl = vexRT[Ch3];
 
-		//Loop to detect if button 5D is ppressed
-		while (vexRT[Btn5D]){
-				//Sets the fly wheels to max powah
-				motor[eFlyWheelPort] = 127;
-				motor[nFlyWheelPort] = -127;
-				//Loop enables the conveyor and wipers to turn on when the fly wheels are running
-				while (vexRT[Btn6U]){
-					motor[conveyorPort] = 36;
-					motor[eWiperPort] = 60;
-				}
-				//Allows conveyor and wipers to turn off
-				while (vexRT[Btn6D]){
-					motor[conveyorPort] = 0;
-					motor[eWiperPort] = 0;
-				}
-				//Monitors the joystick to enable driving while flywheels are in use
-				motor[eDrivingPort] = -1 * vexRT[Ch3];
-				motor[nDrivingPort] = -1 * vexRT[Ch2];
-		}
+		conveyorCtrl = vexRT[Btn6U];  // bools
+		offConveyorCtrl = vexRT[Btn6D]; // ISSUES WITH THIS. VexRT is type'word', i need bool.
+		flywheelCtrl = vexRT[Btn5D];
 
-		//outside loop to turn on conveyor and wipers when fly wheels are not in use
-		while (vexRT[Btn6U]){
+		motor[eDrivingPort] = rightCtrl; // may need to be leftctrl
+		motor[nDrivingPort] = leftCtrl; // same here
+
+		if (conveyorCtrl == 1){
 			motor[conveyorPort] = 36;
 			motor[eWiperPort] = 60;
-
-			/*
-			FOR FUTURE USE!!!
-			toggle = !toggle;
-			if (!toggle){
-				motor[conveyorPort] = 127;
-			}else if(toggle){
-				motor[conveyorPort] = 0;
-			}
-			*/
-		}
-
-		//Loope to turn off the conveyor and wipers when the fly wheels are not in use
-		while (vexRT[Btn6D]){
+		} else if (offConveyorCtrl == 1){
 			motor[conveyorPort] = 0;
 			motor[eWiperPort] = 0;
 		}
 
-		//Outside loop to monitor driving controls when the fly wheels are not in use
-		motor[eDrivingPort] = -1 * vexRT[Ch3];
-		motor[nDrivingPort] = -1 * vexRT[Ch2];
+		if (flywheelCtrl == 1){
+			motor[eFlyWheelPort] = 127;  // both of these may need to be reversed.
+			motor[nFlyWheelPort] = -127;
+		} else {
+			motor[eFlyWheelPort] = 0;
+			motor[nFlyWheelPort] = 0;
+		}
 
 	}
 }
